@@ -17,7 +17,7 @@ The sample is in the './sample' directory.
 #### build with Ninja and g++
 
     $ ninja
-    $ ./00_kinect-test
+    $ bin/00_kinect-test
 
 ## Requirement
 
