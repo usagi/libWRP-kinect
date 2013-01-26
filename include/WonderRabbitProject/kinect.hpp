@@ -301,13 +301,17 @@ WRP_TMP(FLOOD)
 
     inline deleter thread_process_events() const
     {
+      #ifdef WRP_GLOG_ENABLED
       LOG(INFO) << "--> WRP::kinect::context::thread_process_events";
+      #endif
       auto is_running = new bool(true);
       auto t = new std::thread([is_running, this](){
         while(*is_running)
           this->process_events();
       });
+      #ifdef WRP_GLOG_ENABLED
       LOG(INFO) << "<-- WRP::kinect::context::thread_process_events";
+      #endif
       return deleter( [is_running, t](){
         *is_running = false;
         t->join();
@@ -448,7 +452,9 @@ WRP_TMP(FLOOD)
 
     inline void video_mode(RESOLUTION r, VIDEO f)
     {
+      #ifdef WRP_GLOG_ENABLED
       LOG(INFO) << "--> WRP::kinect::video_mode";
+      #endif
       auto m = C::freenect_find_video_mode(
         C::freenect_resolution(r),
         C::freenect_video_format(f)
@@ -464,20 +470,24 @@ WRP_TMP(FLOOD)
           );
         }
       }
+      #ifdef WRP_GLOG_ENABLED
       LOG(INFO) << "freenect_set_video_mode succeed.";
-      
+      #endif
       conf.video_resolution = r;
+      #ifdef WRP_GLOG_ENABLED
       LOG(INFO) << "update conf.video_resolution = " << to_string(r);
-      
+      #endif
       conf.video = f;
+      #ifdef WRP_GLOG_ENABLED
       LOG(INFO) << "update conf.video = " << to_string(f);
-      
+      #endif
       for (auto& b : video_buffers){
         b.resize(m.bytes);
         std::fill(b.begin(), b.end(), 0);
       }
+      #ifdef WRP_GLOG_ENABLED
       LOG(INFO) << "video_buffers prepared";
-      
+      #endif
       {
         auto result = C::freenect_set_video_buffer(
           d,
@@ -491,8 +501,9 @@ WRP_TMP(FLOOD)
           );
         }
       }
+      #ifdef WRP_GLOG_ENABLED
       LOG(INFO) << "freenect_set_video_buffer succeed.";
-      
+      #endif
       C::freenect_set_video_callback(
         d,
         [](C::freenect_device*,void*,uint32_t){
@@ -503,17 +514,25 @@ WRP_TMP(FLOOD)
             d,
             reinterpret_cast<void*>( video_buffers[1].data() )
           );
+          #ifdef WRP_GLOG_ENABLED
           LOG(INFO) << "video_buffers swaped";
+          #endif
           video_time_ = t;
+          #ifdef WRP_GLOG_ENABLED
           LOG(INFO) << "video time update to " << t.time_since_epoch().count();
+          #endif
         }
       );
+      #ifdef WRP_GLOG_ENABLED
       LOG(INFO) << "<-- WRP::kinect::video_mode";
+      #endif
     }
 
     inline void depth_mode(RESOLUTION r, DEPTH f)
     {
+      #ifdef WRP_GLOG_ENABLED
       LOG(INFO) << "--> WRP::kinect::depth_mode";
+      #endif
       auto m = C::freenect_find_depth_mode(
         C::freenect_resolution(r),
         C::freenect_depth_format(f)
@@ -529,20 +548,24 @@ WRP_TMP(FLOOD)
           );
         }
       }
+      #ifdef WRP_GLOG_ENABLED
       LOG(INFO) << "freenect_set_depth_mode succeed.";
-      
+      #endif
       conf.depth_resolution = r;
+      #ifdef WRP_GLOG_ENABLED
       LOG(INFO) << "update conf.depth_resolution = " << to_string(r);
-      
+      #endif
       conf.depth = f;
+      #ifdef WRP_GLOG_ENABLED
       LOG(INFO) << "update conf.depth = " << to_string(f);
-      
+      #endif
       for (auto& b : depth_buffers){
         b.resize(m.bytes);
         std::fill(b.begin(), b.end(), 80);
       }
+      #ifdef WRP_GLOG_ENABLED
       LOG(INFO) << "depth_buffers prepared";
-      
+      #endif
       {
         auto result = C::freenect_set_depth_buffer(
           d,
@@ -556,8 +579,9 @@ WRP_TMP(FLOOD)
           );
         }
       }
+      #ifdef WRP_GLOG_ENABLED
       LOG(INFO) << "freenect_set_depth_buffer succeed.";
-      
+      #endif
       C::freenect_set_depth_callback(
         d,
         [](C::freenect_device*,void*,uint32_t){
@@ -568,12 +592,18 @@ WRP_TMP(FLOOD)
             d,
             reinterpret_cast<void*>( depth_buffers[1].data() )
           );
+          #ifdef WRP_GLOG_ENABLED
           LOG(INFO) << "depth_buffers swaped";
+          #endif
           depth_time_ = t;
+          #ifdef WRP_GLOG_ENABLED
           LOG(INFO) << "depth time update to " << t.time_since_epoch().count();
+          #endif
         }
       );
+      #ifdef WRP_GLOG_ENABLED
       LOG(INFO) << "<-- WRP::kinect::depth_mode";
+      #endif
     }
 
     inline void led(LED l)
@@ -607,9 +637,13 @@ WRP_TMP(FLOOD)
 
     inline deleter start_video()
     {
+      #ifdef WRP_GLOG_ENABLED
       LOG(INFO) << "--> WRP::kinect::start_video";
+      #endif
       if(video_is_started){
+        #ifdef WRP_GLOG_ENABLED
         LOG(INFO) << "aleady started";
+        #endif
         return { [](){} };
       }
       video_time_ = decltype(video_time_)();
@@ -622,15 +656,21 @@ WRP_TMP(FLOOD)
         );
       }
       video_is_started = true;
+      #ifdef WRP_GLOG_ENABLED
       LOG(INFO) << "<-- WRP::kinect::start_video";
+      #endif
       return { [this](){ this->stop_video(); } };
     }
 
     inline deleter start_depth()
     {
+      #ifdef WRP_GLOG_ENABLED
       LOG(INFO) << "--> WRP::kinect::start_depth";
+      #endif
       if(depth_is_started){
+        #ifdef WRP_GLOG_ENABLED
         LOG(INFO) << "aleady started";
+        #endif
         return { [](){} };
       }
       depth_time_ = decltype(depth_time_)();
@@ -643,7 +683,9 @@ WRP_TMP(FLOOD)
         );
       }
       depth_is_started = true;
+      #ifdef WRP_GLOG_ENABLED
       LOG(INFO) << "<-- WRP::kinect::start_depth";
+      #endif
       return { [this](){ this->stop_video(); } };
     }
 
