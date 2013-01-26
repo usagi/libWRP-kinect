@@ -1,4 +1,4 @@
-# libWRP-GLFW
+# libWRP-kinect
 
 C++ OpenKinect(=libfreenect) wrapper library
 
