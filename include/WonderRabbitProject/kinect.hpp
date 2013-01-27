@@ -514,13 +514,13 @@ WRP_TMP(FLOOD)
             d,
             reinterpret_cast<void*>( video_buffers[1].data() )
           );
-          #ifdef WRP_GLOG_ENABLED
-          LOG(INFO) << "video_buffers swaped";
-          #endif
+          //#ifdef WRP_GLOG_ENABLED
+          //LOG(INFO) << "video_buffers swaped";
+          //#endif
           video_time_ = t;
-          #ifdef WRP_GLOG_ENABLED
-          LOG(INFO) << "video time update to " << t.time_since_epoch().count();
-          #endif
+          //#ifdef WRP_GLOG_ENABLED
+          //LOG(INFO) << "video time update to " << t.time_since_epoch().count();
+          //#endif
         }
       );
       #ifdef WRP_GLOG_ENABLED
@@ -592,13 +592,13 @@ WRP_TMP(FLOOD)
             d,
             reinterpret_cast<void*>( depth_buffers[1].data() )
           );
-          #ifdef WRP_GLOG_ENABLED
-          LOG(INFO) << "depth_buffers swaped";
-          #endif
+          //#ifdef WRP_GLOG_ENABLED
+          //LOG(INFO) << "depth_buffers swaped";
+          //#endif
           depth_time_ = t;
-          #ifdef WRP_GLOG_ENABLED
-          LOG(INFO) << "depth time update to " << t.time_since_epoch().count();
-          #endif
+          //#ifdef WRP_GLOG_ENABLED
+          //LOG(INFO) << "depth time update to " << t.time_since_epoch().count();
+          //#endif
         }
       );
       #ifdef WRP_GLOG_ENABLED
