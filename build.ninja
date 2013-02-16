@@ -6,7 +6,7 @@ int_directory    = sample
 out_directory    = bin
 
 rule build
-  command = $build_command $compile_options $link_options $in -o $out
+  command = $build_command $compile_options $in $link_options -o $out
 
 build $out_directory/00_kinect-test : build $int_directory/00_kinect-test.cxx
 
