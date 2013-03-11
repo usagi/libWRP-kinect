@@ -930,6 +930,8 @@ WRP_TMP(FLOOD)
 
 } }
 
+#include "./kinect/calibration.hpp"
+
 #ifdef WRP_GLOG_ENABLED
   #undef WRP_GLOG_ENABLED
 #endif
