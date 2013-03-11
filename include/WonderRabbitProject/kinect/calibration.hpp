@@ -142,7 +142,7 @@ namespace WonderRabbitProject { namespace kinect {
     {
       depth_m_vertices r(vs.size());
       
-      const size_t height = vs.size() / 640;
+      const size_t height = vs.size() / TTWIDTH;
       
       for(size_t y = 0; y < height; ++y)
       {
