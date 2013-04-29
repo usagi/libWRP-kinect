@@ -9,8 +9,8 @@
 #include <string>
 #include <array>
 
-#ifdef _LOGGING_H_
-  #define WRP_GLOG_ENABLED
+#ifndef WRP_GLOG_ENABLED
+  #define L(a,b)
 #endif
 
 namespace WonderRabbitProject { namespace kinect {
@@ -237,7 +237,7 @@ WRP_TMP(FLOOD)
   {
     using this_type = context;
     
-    template<unsigned, class> friend class device;
+    template<unsigned, class> friend struct device;
 
     context(const this_type&) = delete;
     context(this_type&&)      = delete;
@@ -246,20 +246,14 @@ WRP_TMP(FLOOD)
 
     ~context()
     {
-      #ifdef WRP_GLOG_ENABLED
-        LOG(INFO) << "--> WRP::kinect::context::dtor";
-        LOG(INFO) << "context address is " << std::hex << c;
-      #endif
+      L(INFO, "--> WRP::kinect::context::dtor");
+      L(INFO, "context address is " << std::hex << c);
       if ( c )
       {
         C::freenect_shutdown(c);
-        #ifdef WRP_GLOG_ENABLED
-          LOG(INFO) << "freenect_shutdown done";
-        #endif
+        L(INFO, "freenect_shutdown done");
       }
-      #ifdef WRP_GLOG_ENABLED
-        LOG(INFO) << "<-- WRP::kinect::context::dtor";
-      #endif
+      L(INFO, "<-- WRP::kinect::context::dtor");
     }
 
     inline void log_level(const LOG_LEVEL f) const
@@ -276,42 +270,28 @@ WRP_TMP(FLOOD)
 
     inline void process_events() const
     {
-      /*
-      #ifdef WRP_GLOG_ENABLED
-        LOG(INFO) << "--> WRP::kinect::context::process_events";
-      #endif
-      */
+      // LOG(INFO, "--> WRP::kinect::context::process_events");
       auto r = C::freenect_process_events(c);
       if( r != 0 )
       {
-        #ifdef WRP_GLOG_ENABLED
-          LOG(FATAL) << "freenect_process_events fail. code = " << r;
-        #endif
-        throw std::runtime_error(
-          std::string("freenect_process_events fail. code = ")
+        L(FATAL, "freenect_process_events fail. code = " << r);
+        throw std::runtime_error
+          ( std::string("freenect_process_events fail. code = ")
           + std::to_string(r)
-        );
+          );
       }
-      /*
-      #ifdef WRP_GLOG_ENABLED
-        LOG(INFO) << "<-- WRP::kinect::context::process_events";
-      #endif
-      */
+      L(INFO, "<-- WRP::kinect::context::process_events");
     }
 
     inline deleter thread_process_events() const
     {
-      #ifdef WRP_GLOG_ENABLED
-      LOG(INFO) << "--> WRP::kinect::context::thread_process_events";
-      #endif
+      L(INFO, "--> WRP::kinect::context::thread_process_events");
       auto is_running = new bool(true);
       auto t = new std::thread([is_running, this](){
         while(*is_running)
           this->process_events();
       });
-      #ifdef WRP_GLOG_ENABLED
-      LOG(INFO) << "<-- WRP::kinect::context::thread_process_events";
-      #endif
+      L(INFO, "<-- WRP::kinect::context::thread_process_events");
       return deleter( [is_running, t](){
         *is_running = false;
         t->join();
@@ -322,52 +302,39 @@ WRP_TMP(FLOOD)
     
     static this_type& instance()
     {
-      #ifdef WRP_GLOG_ENABLED
-        LOG(INFO) << "--> WRP::kinect::context::instance";
-      #endif
+      L(INFO, "--> WRP::kinect::context::instance");
       if ( ! i )
       {
         std::lock_guard<decltype(m)> g(m);
-        #ifdef WRP_GLOG_ENABLED
-          LOG(INFO) << "lock_guard with mutex address is " << std::hex << &m;
-        #endif
+        L(INFO, "lock_guard with mutex address is " << std::hex << &m);
         if ( ! i )
         {
           i.reset(new this_type());
-          #ifdef WRP_GLOG_ENABLED
-          LOG(INFO)
-            << "new instance; address of instance is "
-            << std::hex << i.get();
-          #endif
+          L(INFO
+            , "new instance; address of instance is "
+            << std::hex << i.get()
+            );
         }
       }
-      #ifdef WRP_GLOG_ENABLED
-        LOG(INFO) << "returning instance address is " << std::hex << i.get();
-        LOG(INFO) << "<-- WRP::kinect::context::instance";
-      #endif
+      L(INFO, "returning instance address is " << std::hex << i.get());
+      L(INFO, "<-- WRP::kinect::context::instance");
       return *i;
     }
     
   private:
     context()
     {
-      #ifdef WRP_GLOG_ENABLED
-        LOG(INFO) << "--> WRP::kinect::context::ctor";
-      #endif
+      L(INFO, "--> WRP::kinect::context::ctor");
       auto r = C::freenect_init(&c, nullptr);
       if ( r != 0 ) {
-        #ifdef WRP_GLOG_ENABLED
-          LOG(ERROR) << "freenect_init fail. code = " << r;
-        #endif
+        L(ERROR, "freenect_init fail. code = " << r);
         throw std::runtime_error(
           std::string("freenect_init fail. code = ")
           + std::to_string(r)
         );
       }
-      #ifdef WRP_GLOG_ENABLED
-        LOG(INFO) << "context address is " << std::hex << c;
-        LOG(INFO) << "<-- WRP::kinect::context::ctor";
-      #endif
+      L(INFO, "context address is " << std::hex << c);
+      L(INFO, "<-- WRP::kinect::context::ctor");
     }
 
     inline C::freenect_context* internal_context()
@@ -411,7 +378,7 @@ WRP_TMP(FLOOD)
   >
   struct device final
   {
-    friend class context;
+    friend struct context;
     using this_type = device<DEVICE_ID, TCONF>;
     
     static constexpr unsigned device_id = DEVICE_ID;
@@ -424,20 +391,14 @@ WRP_TMP(FLOOD)
     
     ~device()
     {
-      #ifdef WRP_GLOG_ENABLED
-        LOG(INFO) << "--> WRP::kinect::device::dtor";
-        LOG(INFO) << "device address is " << std::hex << d;
-      #endif
+      L(INFO, "--> WRP::kinect::device::dtor");
+      L(INFO, "device address is " << std::hex << d);
       if ( d )
       {
         C::freenect_close_device(d);
-        #ifdef WRP_GLOG_ENABLED
-          LOG(INFO) << "freenect_shutdown done";
-        #endif
+        L(INFO, "freenect_shutdown done");
       }
-      #ifdef WRP_GLOG_ENABLED
-        LOG(INFO) << "<-- WRP::kinect::device::dtor";
-      #endif
+      L(INFO, "<-- WRP::kinect::device::dtor");
     }
 
     inline video_frame_mode video_mode() const
@@ -452,9 +413,7 @@ WRP_TMP(FLOOD)
 
     inline void video_mode(RESOLUTION r, VIDEO f)
     {
-      #ifdef WRP_GLOG_ENABLED
-      LOG(INFO) << "--> WRP::kinect::video_mode";
-      #endif
+      L(INFO, "--> WRP::kinect::video_mode");
       auto m = C::freenect_find_video_mode(
         C::freenect_resolution(r),
         C::freenect_video_format(f)
@@ -470,24 +429,16 @@ WRP_TMP(FLOOD)
           );
         }
       }
-      #ifdef WRP_GLOG_ENABLED
-      LOG(INFO) << "freenect_set_video_mode succeed.";
-      #endif
+      L(INFO, "freenect_set_video_mode succeed.");
       conf.video_resolution = r;
-      #ifdef WRP_GLOG_ENABLED
-      LOG(INFO) << "update conf.video_resolution = " << to_string(r);
-      #endif
+      L(INFO, "update conf.video_resolution = " << to_string(r));
       conf.video = f;
-      #ifdef WRP_GLOG_ENABLED
-      LOG(INFO) << "update conf.video = " << to_string(f);
-      #endif
+      L(INFO, "update conf.video = " << to_string(f));
       for (auto& b : video_buffers){
         b.resize(m.bytes);
         std::fill(b.begin(), b.end(), 0);
       }
-      #ifdef WRP_GLOG_ENABLED
-      LOG(INFO) << "video_buffers prepared";
-      #endif
+      L(INFO, "video_buffers prepared");
       {
         auto result = C::freenect_set_video_buffer(
           d,
@@ -501,9 +452,7 @@ WRP_TMP(FLOOD)
           );
         }
       }
-      #ifdef WRP_GLOG_ENABLED
-      LOG(INFO) << "freenect_set_video_buffer succeed.";
-      #endif
+      L(INFO, "freenect_set_video_buffer succeed.");
       C::freenect_set_video_callback(
         d,
         [](C::freenect_device*,void*,uint32_t){
@@ -514,25 +463,17 @@ WRP_TMP(FLOOD)
             d,
             reinterpret_cast<void*>( video_buffers[1].data() )
           );
-          //#ifdef WRP_GLOG_ENABLED
-          //LOG(INFO) << "video_buffers swaped";
-          //#endif
+          //L(INFO, "video_buffers swaped");
           video_time_ = t;
-          //#ifdef WRP_GLOG_ENABLED
-          //LOG(INFO) << "video time update to " << t.time_since_epoch().count();
-          //#endif
+          //L(INFO, "video time update to " << t.time_since_epoch().count());
         }
       );
-      #ifdef WRP_GLOG_ENABLED
-      LOG(INFO) << "<-- WRP::kinect::video_mode";
-      #endif
+      L(INFO, "<-- WRP::kinect::video_mode");
     }
 
     inline void depth_mode(RESOLUTION r, DEPTH f)
     {
-      #ifdef WRP_GLOG_ENABLED
-      LOG(INFO) << "--> WRP::kinect::depth_mode";
-      #endif
+      L(INFO, "--> WRP::kinect::depth_mode");
       auto m = C::freenect_find_depth_mode(
         C::freenect_resolution(r),
         C::freenect_depth_format(f)
@@ -548,24 +489,16 @@ WRP_TMP(FLOOD)
           );
         }
       }
-      #ifdef WRP_GLOG_ENABLED
-      LOG(INFO) << "freenect_set_depth_mode succeed.";
-      #endif
+      L(INFO, "freenect_set_depth_mode succeed.");
       conf.depth_resolution = r;
-      #ifdef WRP_GLOG_ENABLED
-      LOG(INFO) << "update conf.depth_resolution = " << to_string(r);
-      #endif
+      L(INFO, "update conf.depth_resolution = " << to_string(r));
       conf.depth = f;
-      #ifdef WRP_GLOG_ENABLED
-      LOG(INFO) << "update conf.depth = " << to_string(f);
-      #endif
+      L(INFO, "update conf.depth = " << to_string(f));
       for (auto& b : depth_buffers){
         b.resize(m.bytes);
         std::fill(b.begin(), b.end(), 80);
       }
-      #ifdef WRP_GLOG_ENABLED
-      LOG(INFO) << "depth_buffers prepared";
-      #endif
+      L(INFO, "depth_buffers prepared");
       {
         auto result = C::freenect_set_depth_buffer(
           d,
@@ -579,9 +512,7 @@ WRP_TMP(FLOOD)
           );
         }
       }
-      #ifdef WRP_GLOG_ENABLED
-      LOG(INFO) << "freenect_set_depth_buffer succeed.";
-      #endif
+      L(INFO, "freenect_set_depth_buffer succeed.");
       C::freenect_set_depth_callback(
         d,
         [](C::freenect_device*,void*,uint32_t){
@@ -592,18 +523,12 @@ WRP_TMP(FLOOD)
             d,
             reinterpret_cast<void*>( depth_buffers[1].data() )
           );
-          //#ifdef WRP_GLOG_ENABLED
-          //LOG(INFO) << "depth_buffers swaped";
-          //#endif
+          //L(INFO, "depth_buffers swaped");
           depth_time_ = t;
-          //#ifdef WRP_GLOG_ENABLED
-          //LOG(INFO) << "depth time update to " << t.time_since_epoch().count();
-          //#endif
+          //L(INFO, "depth time update to " << t.time_since_epoch().count());
         }
       );
-      #ifdef WRP_GLOG_ENABLED
-      LOG(INFO) << "<-- WRP::kinect::depth_mode";
-      #endif
+      L(INFO, "<-- WRP::kinect::depth_mode");
     }
 
     inline void led(LED l)
@@ -637,13 +562,9 @@ WRP_TMP(FLOOD)
 
     inline deleter start_video()
     {
-      #ifdef WRP_GLOG_ENABLED
-      LOG(INFO) << "--> WRP::kinect::start_video";
-      #endif
+      L(INFO, "--> WRP::kinect::start_video");
       if(video_is_started){
-        #ifdef WRP_GLOG_ENABLED
-        LOG(INFO) << "aleady started";
-        #endif
+        L(INFO, "aleady started");
         return { [](){} };
       }
       video_time_ = decltype(video_time_)();
@@ -656,21 +577,15 @@ WRP_TMP(FLOOD)
         );
       }
       video_is_started = true;
-      #ifdef WRP_GLOG_ENABLED
-      LOG(INFO) << "<-- WRP::kinect::start_video";
-      #endif
+      L(INFO, "<-- WRP::kinect::start_video");
       return { [this](){ this->stop_video(); } };
     }
 
     inline deleter start_depth()
     {
-      #ifdef WRP_GLOG_ENABLED
-      LOG(INFO) << "--> WRP::kinect::start_depth";
-      #endif
+      L(INFO, "--> WRP::kinect::start_depth");
       if(depth_is_started){
-        #ifdef WRP_GLOG_ENABLED
-        LOG(INFO) << "aleady started";
-        #endif
+        L(INFO, "aleady started");
         return { [](){} };
       }
       depth_time_ = decltype(depth_time_)();
@@ -683,9 +598,7 @@ WRP_TMP(FLOOD)
         );
       }
       depth_is_started = true;
-      #ifdef WRP_GLOG_ENABLED
-      LOG(INFO) << "<-- WRP::kinect::start_depth";
-      #endif
+      L(INFO, "<-- WRP::kinect::start_depth");
       return { [this](){ this->stop_video(); } };
     }
 
@@ -780,21 +693,19 @@ WRP_TMP(FLOOD)
 
     inline const configurator_type& ref_configurator()
     {
-      #ifdef WRP_GLOG_ENABLED
-        LOG(INFO)
-          << "--> WRP::kinect::device::ref_configurator; address of configurator is "
-          << std::hex << &conf;
-      #endif
+      L(INFO
+        , "--> WRP::kinect::device::ref_configurator; address of configurator is "
+        << std::hex << &conf
+        );
       return conf;
     }
 
     inline context& ref_context() const
     {
-      #ifdef WRP_GLOG_ENABLED
-        LOG(INFO)
-          << "--> WRP::kinect::device::ref_context; address of context is "
-          << std::hex << &c;
-      #endif
+      L(INFO
+        , "--> WRP::kinect::device::ref_context; address of context is "
+        << std::hex << &c
+        );
       return c;
     }
 
@@ -824,29 +735,22 @@ WRP_TMP(FLOOD)
 
     static this_type& instance()
     {
-      #ifdef WRP_GLOG_ENABLED
-        LOG(INFO) << "--> WRP::kinect::device::instance";
-      #endif
+      L(INFO, "--> WRP::kinect::device::instance");
       if ( ! i )
       {
         std::lock_guard<decltype(m)> g(m);
-        #ifdef WRP_GLOG_ENABLED
-          LOG(INFO) << "lock_guard with mutex address is " << std::hex << &m;
-        #endif
+        L(INFO, "lock_guard with mutex address is " << std::hex << &m);
         if ( ! i )
         {
           i.reset(new this_type());
-          #ifdef WRP_GLOG_ENABLED
-          LOG(INFO)
-            << "new instance; address of instance is "
-            << std::hex << i.get();
-          #endif
+          L(INFO
+            , "new instance; address of instance is "
+            << std::hex << i.get()
+            );
         }
       }
-      #ifdef WRP_GLOG_ENABLED
-        LOG(INFO) << "returning instance address is " << std::hex << i.get();
-        LOG(INFO) << "<-- WRP::kinect::device::instance";
-      #endif
+      L(INFO, "returning instance address is " << std::hex << i.get());
+      L(INFO, "<-- WRP::kinect::device::instance");
       return *i;
     }
     
@@ -931,8 +835,4 @@ WRP_TMP(FLOOD)
 } }
 
 #include "./kinect/calibration.hpp"
-
-#ifdef WRP_GLOG_ENABLED
-  #undef WRP_GLOG_ENABLED
-#endif
 

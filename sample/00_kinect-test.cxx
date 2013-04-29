@@ -1,6 +1,6 @@
 #include <iostream>
-#include <glog/logging.h>
 
+#include <WonderRabbitProject/glog.hpp>
 #include <WonderRabbitProject/kinect.hpp>
 
 #include <boost/gil/extension/io/png_io.hpp>
@@ -11,29 +11,11 @@ namespace
   using namespace WonderRabbitProject;
 
   constexpr auto name = "00_kinect-test";
-  
-  enum class GLOG_OUT
-  {
-    DEFAULT,
-    STDERR
-  };
-  
-  void glog_initialize(const GLOG_OUT out)
-  {
-    google::InitGoogleLogging(name);
-    switch(out)
-    {
-    case GLOG_OUT::STDERR:
-      google::LogToStderr();
-    default:;
-    }
-    LOG(INFO) << "glog initialized";
-  }
 }
 
 int main() try
 {
-  glog_initialize(GLOG_OUT::STDERR);
+  glog::initialize(glog::OUT::STDERR, name);
   
   using device_type = kinect::device<>;
   auto& d = device_type::instance();
@@ -49,7 +31,7 @@ int main() try
   {
     using namespace boost::gil;
     
-    LOG(INFO) << "save video";
+    L(INFO, "save video");
     
     auto vm = d.video_mode();
     auto vb = d.video_buffer<rgb8_pixel_t>();
@@ -62,7 +44,7 @@ int main() try
   {
     using namespace boost::gil;
     
-    LOG(INFO) << "save depth";
+    L(INFO, "save depth");
     
     auto dm = d.depth_mode();
     auto db = d.depth_buffer<gray16_pixel_t>();
@@ -78,7 +60,7 @@ int main() try
   }
 }
 catch (const std::exception& e)
-{ std::cerr << "exception: " << e.what(); }
+{ L(FATAL, "exception: " << e.what()); return -1; }
 catch (...)
-{ std::cerr << "unknown exception"; }
+{ L(FATAL, "unknown exception"); return -2; }
 

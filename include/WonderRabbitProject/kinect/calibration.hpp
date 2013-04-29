@@ -21,7 +21,7 @@ namespace WonderRabbitProject { namespace kinect {
     WRP_TMP(k3_rgb, -1.9922302173693159e-03)
     WRP_TMP(p1_rgb,  1.4371995932897616e-03)
     WRP_TMP(p2_rgb,  9.1192465078713847e-01)
-    WRP_TMP(fx_d  ,  5.9421434211923247e+02)
+    WRP_TMP(fx_d  , -5.9421434211923247e+02)
     WRP_TMP(fy_d  ,  5.9104053696870778e+02)
     WRP_TMP(cx_d  ,  3.3930780975300314e+02)
     WRP_TMP(cy_d  ,  2.4273913761751615e+02)
@@ -63,7 +63,7 @@ namespace WonderRabbitProject { namespace kinect {
   {
     calibrator_conf2_default();
   public:
-    static constexpr double depth_m_from_raw_a() { return -0.0030711016; }
+    static constexpr double depth_m_from_raw_a() { return  0.0030711016; }
     static constexpr double depth_m_from_raw_b() { return -3.3309495161; }
   };
 
@@ -110,13 +110,27 @@ namespace WonderRabbitProject { namespace kinect {
       , 2
       >;
     
+    using unorm_rgb_color_type = std::array<float, 3>;
+
+    struct depth_m_colored_vertex_type
+    {
+      depth_m_vertex       vertex;
+      unorm_rgb_color_type color;
+    };
+    using depth_m_colored_vertices_type = std::vector<depth_m_colored_vertex_type>;
+    
     // depth[m] <-- depth[raw(11bit)]
     static
     depth_m_value depth_m_from_raw(const depth_raw_value v)
-    { return 1.0 / ( v
-                     * TCONF2::depth_m_from_raw_a()
-                     + TCONF2::depth_m_from_raw_b()
-                   );
+    {
+      if (v > 0x07FF)
+        return std::numeric_limits<depth_m_value>::quiet_NaN();
+      
+      depth_m_value r =
+        1.0 / ( v * TCONF2::depth_m_from_raw_a()
+                  + TCONF2::depth_m_from_raw_b()
+              );
+      return r < .0 ? r : std::numeric_limits<depth_m_value>::quiet_NaN();
     }
 
     // { depth[m] } <-- { depth[raw(11bit] }
@@ -140,7 +154,8 @@ namespace WonderRabbitProject { namespace kinect {
     static
     depth_m_vertices depth_m_vertices_from_raw(const depth_raw_values& vs)
     {
-      depth_m_vertices r(vs.size());
+      depth_m_vertices r;
+      r.reserve(vs.size());
       
       const size_t height = vs.size() / TTWIDTH;
       
@@ -152,9 +167,11 @@ namespace WonderRabbitProject { namespace kinect {
           const size_t i = x + yi;
           using t = depth_m_vertex_element_type;
           const t z_ = t(depth_m_from_raw(vs[i]));
-          r[i] =
-            {{ ( t(x) - t(conf1_type::cx_d()) ) * z_ / t(conf1_type::fx_d)
-            ,  ( t(y) - t(conf1_type::cy_d()) ) * z_ / t(conf1_type::fy_d)
+          if(std::isnan(z_))
+            continue;
+          std::back_inserter(r) = 
+            {{ ( t(x) - t(conf1_type::cx_d()) ) * z_ / t(conf1_type::fx_d())
+            ,  ( t(y) - t(conf1_type::cy_d()) ) * z_ / t(conf1_type::fy_d())
             ,  z_
             }};
         }
@@ -163,6 +180,57 @@ namespace WonderRabbitProject { namespace kinect {
       return r;
     }
     
+    template
+    < class TTCOLORS = std::vector<std::array<uint8_t, 3>>
+    , size_t TTWIDTH = 640, size_t TTHEIGHT = 480
+    >
+    static depth_m_colored_vertices_type
+    depth_m_colored_vertices_from_raw(const depth_raw_values& vs, const TTCOLORS& cs)
+    {
+      using colors_value_type = typename TTCOLORS::value_type::value_type;
+      constexpr float raw_color_type_max =
+        float(std::numeric_limits<colors_value_type>::max());
+      
+      depth_m_colored_vertices_type r;
+      r.reserve(vs.size());
+      
+      for(size_t y = 0; y < TTHEIGHT; ++y)
+      {
+        const size_t yi = y * TTWIDTH;
+        for(size_t x = 0; x < TTWIDTH; ++x)
+        {
+          const size_t i = x + yi;
+          using t = depth_m_vertex_element_type;
+          const t z_ = t(depth_m_from_raw(vs[i]));
+          
+          if(std::isnan(z_))
+            continue;
+          
+          depth_m_vertex&& vertex =
+          {{ ( t(x) - t(conf1_type::cx_d()) ) * z_ / t(conf1_type::fx_d())
+          ,  ( t(y) - t(conf1_type::cy_d()) ) * z_ / t(conf1_type::fy_d())
+          ,  z_
+          }};
+          
+          const auto ci =
+            video_pixel_index_coordinate_from_depth_m_vertex
+            <TTWIDTH, TTHEIGHT>(vertex);
+          
+          const auto& raw_color = cs[ci[0] + ci[1] * TTWIDTH];
+          
+          unorm_rgb_color_type unorm_color =
+            {{ float(raw_color[0]) / raw_color_type_max
+            ,  float(raw_color[1]) / raw_color_type_max
+            ,  float(raw_color[2]) / raw_color_type_max
+            }};
+          
+          std::back_inserter(r) = { std::move(vertex), unorm_color };
+        }
+      }
+      
+      return r;
+    }
+
     // video[(x-unorm,y-unorm)] <-- depth[(m,m,m)]
     template<size_t TTWIDTH = 640, size_t TTHEIGHT = 480>
     static
@@ -171,25 +239,25 @@ namespace WonderRabbitProject { namespace kinect {
     (const depth_m_vertex& v)
     {
       using t = depth_m_vertex_element_type;
-      const t x_ = conf1_type::R()[0][0] * v[0]
-                 + conf1_type::R()[0][1] * v[1]
-                 + conf1_type::R()[0][2] * v[2]
-                 + conf1_type::R()[0]
+      const t x_ = conf1_type::r()[0][0] * v[0]
+                 + conf1_type::r()[1][0] * v[1]
+                 + conf1_type::r()[2][0] * v[2]
+                 - conf1_type::t()[0]
                  ;
-      const t y_ = conf1_type::R()[1][0] * v[0]
-                 + conf1_type::R()[1][1] * v[1]
-                 + conf1_type::R()[1][2] * v[2]
-                 + conf1_type::R()[1]
+      const t y_ = conf1_type::r()[0][1] * v[0]
+                 + conf1_type::r()[1][1] * v[1]
+                 + conf1_type::r()[2][1] * v[2]
+                 - conf1_type::t()[1]
                  ;
-      const t z_ = conf1_type::R()[2][0] * v[0]
-                 + conf1_type::R()[2][1] * v[1]
-                 + conf1_type::R()[2][2] * v[2]
-                 + conf1_type::R()[2]
+      const t z_ = conf1_type::r()[0][2] * v[0]
+                 + conf1_type::r()[1][2] * v[1]
+                 + conf1_type::r()[2][2] * v[2]
+                 - conf1_type::t()[2]
                  ;
       const t x__
-        = (x_ * t(conf1_type::fx_rgb()) / z_ + t(conf1_type::cx_rgb)) * TTWIDTH;
+        = (x_ * t(conf1_type::fx_rgb()) / z_ + t(conf1_type::cx_rgb())) * TTWIDTH;
       const t y__
-        = (y_ * t(conf1_type::fy_rgb()) / z_ + t(conf1_type::cy_rgb)) * TTHEIGHT;
+        = (y_ * t(conf1_type::fy_rgb()) / z_ + t(conf1_type::cy_rgb())) * TTHEIGHT;
       return
       //{{ std::min(std::max(x__,0), 1 )
       //,  std::min(std::max(y__,0), 1 )
@@ -198,7 +266,7 @@ namespace WonderRabbitProject { namespace kinect {
       ;
     }
 
-    // video[(x-unorm,y-unorm)] <-- depth[(m,m,m)]
+    // video[(x,y)] <-- depth[(m,m,m)]
     template<size_t TTWIDTH = 640, size_t TTHEIGHT = 480>
     static
     video_pixel_index_coordinate
@@ -207,24 +275,24 @@ namespace WonderRabbitProject { namespace kinect {
     {
       using t = depth_m_vertex_element_type;
       const t x_ = conf1_type::R()[0][0] * v[0]
-                 + conf1_type::R()[0][1] * v[1]
-                 + conf1_type::R()[0][2] * v[2]
-                 + conf1_type::R()[0]
+                 + conf1_type::R()[1][0] * v[1]
+                 + conf1_type::R()[2][0] * v[2]
+                 - conf1_type::T()[0]
                  ;
-      const t y_ = conf1_type::R()[1][0] * v[0]
+      const t y_ = conf1_type::R()[0][1] * v[0]
                  + conf1_type::R()[1][1] * v[1]
-                 + conf1_type::R()[1][2] * v[2]
-                 + conf1_type::R()[1]
+                 + conf1_type::R()[2][1] * v[2]
+                 - conf1_type::T()[1]
                  ;
-      const t z_ = conf1_type::R()[2][0] * v[0]
-                 + conf1_type::R()[2][1] * v[1]
+      const t z_ = conf1_type::R()[0][2] * v[0]
+                 + conf1_type::R()[1][2] * v[1]
                  + conf1_type::R()[2][2] * v[2]
-                 + conf1_type::R()[2]
+                 - conf1_type::T()[2]
                  ;
       const auto x__
-        = size_t(x_ * t(conf1_type::fx_rgb()) / z_ + t(conf1_type::cx_rgb));
+        = size_t(x_ * t(conf1_type::fx_rgb()) / z_ + t(conf1_type::cx_rgb()));
       const auto y__
-        = size_t(y_ * t(conf1_type::fy_rgb()) / z_ + t(conf1_type::cy_rgb));
+        = size_t(y_ * t(conf1_type::fy_rgb()) / z_ + t(conf1_type::cy_rgb()));
       return
       //{{ std::min(std::max(x__,0), 640 )
       //,  std::min(std::max(y__,0), 480 )

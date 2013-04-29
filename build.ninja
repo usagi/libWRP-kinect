@@ -1,12 +1,13 @@
-build_command    = g++
+build_command    = clang++
 include_path     = -Iinclude
-compile_options  = $include_path -std=c++11 -O3 -Wall -Werror
-link_options     = -lglog -lfreenect -lpthread -lpng
+compile_options  = $include_path -std=c++11 -O3 -Wall -pedantic-errors -Werror
+link_options     = -lglog -lfreenect -lpthread -lpng  -lopenctm
 int_directory    = sample
 out_directory    = bin
 
 rule build
   command = $build_command $compile_options $in $link_options -o $out
 
-build $out_directory/00_kinect-test : build $int_directory/00_kinect-test.cxx
+build $out_directory/00_kinect-test        : build $int_directory/00_kinect-test.cxx
+#build $out_directory/01_kinect-calibration : build $int_directory/01_kinect-calibration.cxx
 

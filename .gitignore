@@ -2,4 +2,5 @@
 bin
 video.png
 depth.png
-
+model.ply
+model.vertices.tsv
